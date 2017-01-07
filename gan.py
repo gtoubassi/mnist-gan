@@ -24,37 +24,42 @@ def main():
     ones = []
     for image, label in zip(mnist.train.images, mnist.train.labels):
         # label is one hot encoded so if label[1] is on, its a one
-        if label[1]:
+        if label[2]:
             ones.append(image)
 
     sess = tf.Session()    
     
+    def leakyrelu(x):
+        return tf.maximum(0.01*x,x)
+        #return tf.nn.relu(x)
+
     # Generator network
     with tf.variable_scope('generator') as scope:
         g_x = tf.placeholder(tf.float32, shape=[None, 32], name='input')
 
         stdv = 1/math.sqrt(32)
+        #tf.get_variable("g_w1", shape=[32, 1024], initializer=tf.contrib.layers.xavier_initializer())
         g_w1 = tf.Variable(tf.random_uniform([32, 1024], minval=-stdv, maxval=stdv))
         g_b1  = tf.Variable(tf.zeros([1024]))
-        g_h1 = tf.nn.relu(tf.matmul(g_x, g_w1) + g_b1)
+        g_h1 = leakyrelu(tf.matmul(g_x, g_w1) + g_b1)
         
         stdv = 1/math.sqrt(1024)
         g_w2 = tf.Variable(tf.random_uniform([1024, 7*7*64], minval=-stdv, maxval=stdv))
         g_b2  = tf.Variable(tf.zeros([7*7*64]))
-        g_h2 = tf.nn.relu(tf.matmul(g_h1, g_w2) + g_b2)
+        g_h2 = leakyrelu(tf.matmul(g_h1, g_w2) + g_b2)
         g_h2_reshaped = tf.reshape(g_h2, [-1, 7, 7, 64])        
         
         g_w3 = tf.Variable(tf.random_uniform([5, 5, 32, 64], minval=-.02, maxval=.02))
         g_b3  = tf.Variable(tf.zeros([32]))
         g_deconv3 = tf.nn.conv2d_transpose(g_h2_reshaped, g_w3, output_shape=[32, 14, 14, 32], strides=[1, 2, 2, 1])
-        g_h3 = tf.nn.relu(g_deconv3 + g_b3)
+        g_h3 = leakyrelu(g_deconv3 + g_b3)
         
         g_w4 = tf.Variable(tf.random_uniform([5, 5, 1, 32], minval=-.02, maxval=.02))
         g_b4  = tf.Variable(tf.zeros(1))
         g_deconv4 = tf.nn.conv2d_transpose(g_h3, g_w4, output_shape=[32, 28, 28, 1], strides=[1, 2, 2, 1])
 
-        g_y_image = tf.nn.sigmoid(g_deconv4 + g_b4)
-        g_y = tf.reshape(g_y_image, [-1, 784])        
+        g_y_logits = tf.reshape(g_deconv4 + g_b4, [-1, 784])
+        g_y = tf.nn.sigmoid(g_y_logits)
     
     def build_discriminator(x, keep_prob):
         def weight_variable(shape):
@@ -77,14 +82,14 @@ def main():
             d_W_conv1 = weight_variable([5, 5, 1, 32])
             d_b_conv1 = bias_variable([32])
             
-            d_h_conv1 = tf.nn.relu(conv2d(d_x_image, d_W_conv1) + d_b_conv1)
+            d_h_conv1 = leakyrelu(conv2d(d_x_image, d_W_conv1) + d_b_conv1)
             d_h_pool1 = max_pool_2x2(d_h_conv1)
     
         with tf.variable_scope("conv2"):
             d_W_conv2 = weight_variable([5, 5, 32, 64])
             d_b_conv2 = bias_variable([64])
 
-            d_h_conv2 = tf.nn.relu(conv2d(d_h_pool1, d_W_conv2) + d_b_conv2)
+            d_h_conv2 = leakyrelu(conv2d(d_h_pool1, d_W_conv2) + d_b_conv2)
             d_h_pool2 = max_pool_2x2(d_h_conv2)
     
         with tf.variable_scope("fc1"):
@@ -92,98 +97,65 @@ def main():
             d_b_fc1 = bias_variable([1024])
 
             d_h_pool2_flat = tf.reshape(d_h_pool2, [-1, 7*7*64])
-            d_h_fc1 = tf.nn.relu(tf.matmul(d_h_pool2_flat, d_W_fc1) + d_b_fc1)
+            d_h_fc1 = leakyrelu(tf.matmul(d_h_pool2_flat, d_W_fc1) + d_b_fc1)
     
             d_h_fc1_drop = tf.nn.dropout(d_h_fc1, keep_prob)
     
         with tf.variable_scope("fc2"):
             d_W_fc2 = weight_variable([1024, 1])
             d_b_fc2 = bias_variable([1])
-
-        d_y = tf.sigmoid(tf.matmul(d_h_fc1_drop, d_W_fc2) + d_b_fc2)
-    
-        d_correct_prediction = tf.equal(tf.round(d_y), tf.round(d_y_))
-        d_eval = tf.reduce_mean(tf.cast(d_correct_prediction, tf.float32))
         
-        return d_y, d_eval, d_keep_prob
+        d_y_logit = tf.matmul(d_h_fc1_drop, d_W_fc2) + d_b_fc2
+        d_y = tf.sigmoid(d_y_logit)
+        
+        return d_y, d_y_logit, d_keep_prob
     
     
     with tf.variable_scope('discriminator') as scope:
 
         d_x = tf.placeholder(tf.float32, shape=[None, 784])
-        d_y_ = tf.placeholder(tf.float32, shape=[None, 1], name='d_y_')
         d_keep_prob = tf.placeholder(tf.float32, name='d_keep_prob')
 
-        d_y, d_eval, d_keep_prob = build_discriminator(d_x, d_keep_prob)
+        d_y, d_y_logit, d_keep_prob = build_discriminator(d_x, d_keep_prob)
         
         scope.reuse_variables()
-        g_d_y, g_d_eval, g_d_keep_prob = build_discriminator(g_y, d_keep_prob)
+        g_d_y, g_d_y_logit, g_d_keep_prob = build_discriminator(g_y, d_keep_prob)
     
     
     vars = tf.trainable_variables()
-    d_loss = tf.reduce_mean(tf.square(d_y_ - d_y))
+    d_loss_real = tf.nn.sigmoid_cross_entropy_with_logits(d_y_logit, tf.ones_like(d_y_logit))
+    d_loss_fake = tf.nn.sigmoid_cross_entropy_with_logits(g_d_y_logit, tf.zeros_like(g_d_y_logit))
+    d_loss = d_loss_real + d_loss_fake
     d_training_vars = [v for v in vars if v.name.startswith('discriminator/')]
-    d_optimizer = tf.train.AdamOptimizer().minimize(d_loss, var_list=d_training_vars)
+    d_optimizer = tf.train.AdamOptimizer(0.0002, beta1=0.5).minimize(d_loss, var_list=d_training_vars)
 
     # build loss function for training the generator
-    g_d_loss = tf.reduce_mean(tf.square(1 - g_d_y))
+    #g_d_loss = tf.reduce_mean(tf.square(1 - g_d_y))
+    
+    g_d_loss = tf.nn.sigmoid_cross_entropy_with_logits(g_d_y_logit, tf.ones_like(g_d_y_logit))
     g_d_correct_prediction = tf.equal(tf.round(g_d_y), tf.constant(1.0))
     g_d_eval = tf.reduce_mean(tf.cast(g_d_correct_prediction, tf.float32))
     g_training_vars = [v for v in vars if v.name.startswith('generator/')]
-    g_d_optimizer = tf.train.AdamOptimizer().minimize(g_d_loss, var_list=g_training_vars)
+    g_d_optimizer = tf.train.AdamOptimizer(0.0002, beta1=0.5).minimize(g_d_loss, var_list=g_training_vars)
 
     sess.run(tf.global_variables_initializer())
 
-    def genbatch(n):
-        half_n = n/2
-        result = sess.run([g_y], {g_x: np.random.uniform(-1, 1, size=(32,32))})
-        full = result[0][:half_n]
-        batch_g = [(full[i], [0]) for i in xrange(full.shape[0])]
-        
-        batch_mnist = zip(random.sample(ones, half_n), [[1]]*half_n)
-    
-        combined = batch_g + batch_mnist
-        random.shuffle(combined)
-    
-        return zip(*combined)
-
-
-    for epoch in range(20):
+    for epoch in range(60000):
 
         #
-        # Train the discriminator until it can beat the generator
-        #
-
-        for i in range(10000):
-
-            if i % 2 == 0:
-                batch_d_x, batch_d_y = genbatch(64)
-                accuracy = sess.run([d_eval], {d_x: batch_d_x, d_y_: batch_d_y, d_keep_prob: 1.0})
-                print "Epoch %d Discriminator Eval %d: %f" % (epoch, i, accuracy[0])
-                if accuracy[0] > 62.0/64.0:
-                    print "Discriminator network has achieved mastery over the current generator"
-                    break;
-
-            batch_d_x, batch_d_y = genbatch(32)    
-            d_optimizer.run(feed_dict={d_x: batch_d_x, d_y_: batch_d_y, d_keep_prob: 0.5}, session=sess)
+        # Train the discriminator
+        _, discriminator_loss = sess.run([d_optimizer, d_loss], feed_dict={d_x: random.sample(ones, 32), g_x: np.random.normal(size=(32,32)), d_keep_prob: 0.5})
 
         #
-        # Train the generator until it can beat the discriminator
-        #
-    
-        for i in range(10000):
+        # Train the generator
+        z = np.random.normal(size=(32,32))
+        _, generator_loss = sess.run([g_d_optimizer, g_d_loss], feed_dict={g_x: z, d_keep_prob: 1.0})
 
-            if i % 2 == 0:
-                accuracy = sess.run([g_d_eval], {g_x: np.random.uniform(-1, 1, size=(32,32)), d_keep_prob: 1.0})
-                print "Epoch %d Generator Eval %d: %f" % (epoch, i, accuracy[0])
-                if accuracy[0] > 30.0/32.0:
-                    print "Generator network has achieved mastery over the current discriminator"
-                    break;
+        if epoch % 10 == 0:
 
-            g_d_optimizer.run(feed_dict={g_x: np.random.uniform(-1, 1, size=(32,32)), d_keep_prob: 1.0}, session=sess)
+            print "Epoch %d Generator Eval: %f %f" % (epoch, discriminator_loss[0], generator_loss[0])
 
-        if epoch % 1 == 0:
-            result = sess.run([g_y], {g_x: np.random.uniform(-1, 1, size=(32,32))})
+            result = sess.run([g_y], {g_x: np.random.normal(size=(32,32))})
             image = np.reshape(result[0], (32*28, 28)) * 255.0
             save_png('gen-0-epoch-%06d.png' % epoch, image)            
 
