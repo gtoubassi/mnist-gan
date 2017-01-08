@@ -33,6 +33,9 @@ class GAN:
 
         self.sess = tf.Session()    
         self.sess.run(tf.global_variables_initializer())
+        
+        self.saver = tf.train.Saver()
+        
 
     def train_step(self, batch):
         
@@ -46,6 +49,9 @@ class GAN:
         _, generator_loss = self.sess.run([self.g_d_optimizer, self.g_d_loss], feed_dict={self.is_training: True, self.g_x: z, self.d_keep_prob: 1.0})
         
         return discriminator_loss[0], generator_loss[0]
+    
+    def save(self, path, global_step=None):
+        return self.saver.save(self.sess, path, global_step)
 
     def eval_generator(self, n_samples=1):
         result = self.sess.run([self.g_y], {self.is_training: False, self.g_x: np.random.normal(size=(n_samples,32))})
