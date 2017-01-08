@@ -185,6 +185,12 @@ _adam7 = ((0, 0, 8, 8),
           (1, 0, 2, 2),
           (0, 1, 1, 2))
 
+def save_png(filename, array):
+    pngfile = open(filename, 'wb')
+    pngWriter = Writer(array.shape[1], array.shape[0], greyscale=True)
+    pngWriter.write(pngfile, array)
+    pngfile.close()
+
 def group(s, n):
     # See http://www.python.org/doc/2.6/library/functions.html#zip
     return list(zip(*[iter(s)]*n))

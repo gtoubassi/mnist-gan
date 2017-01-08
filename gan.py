@@ -1,5 +1,8 @@
 import tensorflow as tf
 import numpy as np
+import png
+import random
+import os
 
 class GAN:
     
@@ -30,31 +33,51 @@ class GAN:
         self.g_d_loss = tf.nn.sigmoid_cross_entropy_with_logits(self.g_d_y_logit, tf.ones_like(self.g_d_y_logit))
         g_training_vars = [v for v in vars if v.name.startswith('generator/')]
         self.g_d_optimizer = tf.train.AdamOptimizer(0.0002, beta1=0.5).minimize(self.g_d_loss, var_list=g_training_vars)
-
-        self.sess = tf.Session()    
-        self.sess.run(tf.global_variables_initializer())
         
         self.saver = tf.train.Saver()
-        
 
-    def train_step(self, batch):
-        
-        #
-        # Train the discriminator
-        _, discriminator_loss = self.sess.run([self.d_optimizer, self.d_loss], feed_dict={self.is_training: True, self.d_x: batch, self.g_x: np.random.normal(size=(32,32)), self.d_keep_prob: 0.5})
-
-        #
-        # Train the generator
-        z = np.random.normal(size=(32,32))
-        _, generator_loss = self.sess.run([self.g_d_optimizer, self.g_d_loss], feed_dict={self.is_training: True, self.g_x: z, self.d_keep_prob: 1.0})
-        
-        return discriminator_loss[0], generator_loss[0]
+    def train_digit(self, mnist, digit, path):
     
-    def save(self, path, global_step=None):
-        return self.saver.save(self.sess, path, global_step)
+        sess = tf.Session()    
+        sess.run(tf.global_variables_initializer())
+        
+        # Get all the training '1' digits for our "real" data
+        digits_of_interest = []
+        for image, label in zip(mnist.train.images, mnist.train.labels):
+            if label[digit]:
+                digits_of_interest.append(image)
+    
+        random.seed(12345)
+        random.shuffle(digits_of_interest)
 
-    def eval_generator(self, n_samples=1):
-        result = self.sess.run([self.g_y], {self.is_training: False, self.g_x: np.random.normal(size=(n_samples,32))})
+        batch_size = 32
+        for step in range(20000):
+        
+            batch_index = step * batch_size % len(digits_of_interest)
+            batch_index = min(batch_index, len(digits_of_interest) - batch_size)
+            batch = digits_of_interest[batch_index:(batch_index + batch_size)]
+
+            #
+            # Train the discriminator
+            _, discriminator_loss = sess.run([self.d_optimizer, self.d_loss], feed_dict={self.is_training: True, self.d_x: batch, self.g_x: np.random.normal(size=(32,32)), self.d_keep_prob: 0.5})
+
+            #
+            # Train the generator
+            z = np.random.normal(size=(32,32))
+            _, generator_loss = sess.run([self.g_d_optimizer, self.g_d_loss], feed_dict={self.is_training: True, self.g_x: z, self.d_keep_prob: 1.0})
+
+            if step % 100 == 0:
+                print "Digit %d Step %d Eval: %f %f" % (digit, step, discriminator_loss[0], generator_loss[0])
+
+            if step % 250 == 0:
+                result = self.eval_generator(sess, 32)
+                image = np.reshape(result, (32*28, 28)) * 255.0
+                png.save_png('%s/digit-step-%06d.png' % (os.path.dirname(path), step), image)
+                self.saver.save(sess, path, step)
+        self.saver.save(sess, path, step)
+
+    def eval_generator(self, sess, n_samples=1):
+        result = sess.run([self.g_y], {self.is_training: False, self.g_x: np.random.normal(size=(n_samples,32))})
         return result[0]
     
     def leakyrelu(self, x):
