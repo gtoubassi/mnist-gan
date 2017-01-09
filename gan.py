@@ -34,17 +34,19 @@ class GAN:
         g_training_vars = [v for v in vars if v.name.startswith('generator/')]
         self.g_d_optimizer = tf.train.AdamOptimizer(0.0002, beta1=0.5).minimize(self.g_d_loss, var_list=g_training_vars)
         
-        self.saver = tf.train.Saver()
 
     def restore_session(self, path):
+        saver = tf.train.Saver()
         sess = tf.Session()
-        self.saver.restore(sess, path)
+        saver.restore(sess, path)
         return sess
 
     def train_digit(self, mnist, digit, path):
     
         sess = tf.Session()    
         sess.run(tf.global_variables_initializer())
+        
+        saver = tf.train.Saver()
         
         # Get all the training '1' digits for our "real" data
         digits_of_interest = []
@@ -78,8 +80,8 @@ class GAN:
                 result = self.eval_generator(sess, 32)
                 image = np.reshape(result, (32*28, 28)) * 255.0
                 png.save_png('%s/digit-step-%06d.png' % (os.path.dirname(path), step), image)
-                self.saver.save(sess, path, step)
-        self.saver.save(sess, path, step)
+                saver.save(sess, path, step)
+        saver.save(sess, path, step)
 
     def eval_generator(self, sess, n_samples=1):
         result = sess.run([self.g_y], {self.is_training: False, self.g_x: np.random.normal(size=(n_samples,32))})

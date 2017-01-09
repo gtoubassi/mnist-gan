@@ -36,7 +36,7 @@ def main():
             if not os.path.exists(os.path.dirname(path)):
                 os.makedirs(os.path.dirname(path))
             gan.train_digit(mnist_data, digit, path)
-    else if args.train_mnist:
+    elif args.train_mnist:
         gan = GAN()
         sessions = [gan.restore_session("%s/digit-%d/model" % (args.output_dir, digit)) for digit in range(10)]
         samples = []
