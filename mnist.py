@@ -52,15 +52,15 @@ class MNIST:
             self.sess = tf.Session()
             self.sess.run(tf.global_variables_initializer())
     
-        def train(self, mnist_data):
-            for i in range(20000):
+        def train(self, mnist_data, num_steps=20000*50):
+            for i in range(num_steps / 50):
                 batch = mnist_data.train.next_batch(50)
-                if i % 100 == 0:
-                    train_accuracy = self.eval_batch(batch[0], batch[1])
-                    print("step %d, training accuracy %g" % (i, train_accuracy))
-                self.train_batch(batch[0], batch[1])
+                self.train_batch(batch[0], batch[1], step)
             
-        def train_batch(self, batch_x, target_y):
+        def train_batch(self, batch_x, target_y, step):
+            if step % 100 == 0:
+                train_accuracy = self.eval_batch(batch_x, batch_y)
+                print("step %d, training accuracy %g" % (step, train_accuracy))
             self.sess.run([self.train_step], feed_dict={self.x: batch_x, self.y_: target_y, self.keep_prob: 0.5})
 
         def eval_batch(self, batch_x, target_y):
@@ -83,12 +83,13 @@ class MNIST:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mnist-dir", default='/tmp/mnist-data', help="Director where mnist downloaded dataset will be stored")
-    args = parser.parse_args()    
+    parser.add_argument("--num-steps", default=20000*50, help="Number of total sample images to train on")
+    args = parser.parse_args()
     
     mnist_data = tf.contrib.learn.python.learn.datasets.mnist.read_data_sets(args.mnist_dir, one_hot=True)
     
     mnist = MNIST()
-    mnist.train(mnist_data)
+    mnist.train(mnist_data, args.num_steps)
 
     # Baseline: Test accuracy 0.9934
     test_accuracy = mnist.eval_batch(mnist_data.test.images, mnist_data.test.labels)
