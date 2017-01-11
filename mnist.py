@@ -9,57 +9,59 @@ import numpy as np
 class MNIST:
     
         def __init__(self):
-            with tf.variable_scope("input"):
-                self.x = tf.placeholder(tf.float32, shape=[None, 784])
-                self.y_ = tf.placeholder(tf.float32, shape=[None, 10])
-                x_image = tf.reshape(self.x, [-1,28,28,1])
+            self.g = tf.Graph()
+            with self.g.as_default():
+                with tf.variable_scope("input"):
+                    self.x = tf.placeholder(tf.float32, shape=[None, 784])
+                    self.y_ = tf.placeholder(tf.float32, shape=[None, 10])
+                    x_image = tf.reshape(self.x, [-1,28,28,1])
 
-            with tf.variable_scope("conv1"):
-                W_conv1 = self.weight_variable([5, 5, 1, 32])
-                b_conv1 = self.bias_variable([32])
+                with tf.variable_scope("conv1"):
+                    W_conv1 = self.weight_variable([5, 5, 1, 32])
+                    b_conv1 = self.bias_variable([32])
             
-                h_conv1 = tf.nn.relu(self.conv2d(x_image, W_conv1) + b_conv1)
-                h_pool1 = self.max_pool_2x2(h_conv1)
+                    h_conv1 = tf.nn.relu(self.conv2d(x_image, W_conv1) + b_conv1)
+                    h_pool1 = self.max_pool_2x2(h_conv1)
     
-            with tf.variable_scope("conv2"):
-                W_conv2 = self.weight_variable([5, 5, 32, 64])
-                b_conv2 = self.bias_variable([64])
+                with tf.variable_scope("conv2"):
+                    W_conv2 = self.weight_variable([5, 5, 32, 64])
+                    b_conv2 = self.bias_variable([64])
 
-                h_conv2 = tf.nn.relu(self.conv2d(h_pool1, W_conv2) + b_conv2)
-                h_pool2 = self.max_pool_2x2(h_conv2)
+                    h_conv2 = tf.nn.relu(self.conv2d(h_pool1, W_conv2) + b_conv2)
+                    h_pool2 = self.max_pool_2x2(h_conv2)
     
-            with tf.variable_scope("fc1"):
-                W_fc1 = self.weight_variable([7 * 7 * 64, 1024])
-                b_fc1 = self.bias_variable([1024])
+                with tf.variable_scope("fc1"):
+                    W_fc1 = self.weight_variable([7 * 7 * 64, 1024])
+                    b_fc1 = self.bias_variable([1024])
 
-                h_pool2_flat = tf.reshape(h_pool2, [-1, 7*7*64])
-                h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+                    h_pool2_flat = tf.reshape(h_pool2, [-1, 7*7*64])
+                    h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
     
-                self.keep_prob = tf.placeholder(tf.float32)
-                h_fc1_drop = tf.nn.dropout(h_fc1, self.keep_prob)
+                    self.keep_prob = tf.placeholder(tf.float32)
+                    h_fc1_drop = tf.nn.dropout(h_fc1, self.keep_prob)
     
-            with tf.variable_scope("fc2"):
-                W_fc2 = self.weight_variable([1024, 10])
-                b_fc2 = self.bias_variable([10])
+                with tf.variable_scope("fc2"):
+                    W_fc2 = self.weight_variable([1024, 10])
+                    b_fc2 = self.bias_variable([10])
         
-            self.y_logit = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
+                self.y_logit = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
             
-            self.cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.y_logit, self.y_))
-            self.train_step = tf.train.AdamOptimizer(1e-4).minimize(self.cross_entropy)
-            self.correct_prediction = tf.equal(tf.argmax(self.y_logit, 1), tf.argmax(self.y_, 1))
-            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))
+                self.cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.y_logit, self.y_))
+                self.train_step = tf.train.AdamOptimizer(1e-4).minimize(self.cross_entropy)
+                self.correct_prediction = tf.equal(tf.argmax(self.y_logit, 1), tf.argmax(self.y_, 1))
+                self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))
             
-            self.sess = tf.Session()
-            self.sess.run(tf.global_variables_initializer())
+                self.sess = tf.Session(graph=self.g)
+                self.sess.run(tf.global_variables_initializer())
     
         def train(self, mnist_data, num_steps=20000*50):
             for i in range(num_steps / 50):
                 batch = mnist_data.train.next_batch(50)
-                self.train_batch(batch[0], batch[1], step)
+                self.train_batch(batch[0], batch[1], i)
             
         def train_batch(self, batch_x, target_y, step):
             if step % 100 == 0:
-                train_accuracy = self.eval_batch(batch_x, batch_y)
+                train_accuracy = self.eval_batch(batch_x, target_y)
                 print("step %d, training accuracy %g" % (step, train_accuracy))
             self.sess.run([self.train_step], feed_dict={self.x: batch_x, self.y_: target_y, self.keep_prob: 0.5})
 

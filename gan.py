@@ -38,7 +38,7 @@ class GAN:
     def restore_session(self, path):
         saver = tf.train.Saver()
         sess = tf.Session()
-        saver.restore(sess, path)
+        saver.restore(sess, tf.train.latest_checkpoint(path))
         return sess
 
     def train_digit(self, mnist, digit, path):
