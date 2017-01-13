@@ -3,6 +3,7 @@ import numpy as np
 import png
 import random
 import os
+import code
 
 class GAN:
     
@@ -14,6 +15,7 @@ class GAN:
         with tf.variable_scope('discriminator') as scope:
 
             self.d_x = tf.placeholder(tf.float32, shape=[None, 784])
+            self.d_y_ = tf.placeholder(tf.float32, shape=[None, 1])
             self.d_keep_prob = tf.placeholder(tf.float32, name='d_keep_prob')
 
             self.d_y, self.d_y_logit = self.build_discriminator(self.d_x, self.d_keep_prob)
@@ -28,6 +30,9 @@ class GAN:
         self.d_loss = d_loss_real + d_loss_fake
         d_training_vars = [v for v in vars if v.name.startswith('discriminator/')]
         self.d_optimizer = tf.train.AdamOptimizer(0.0002, beta1=0.5).minimize(self.d_loss, var_list=d_training_vars)
+
+        self.d_accuracy = tf.reduce_sum(tf.cast(tf.equal(tf.round(self.d_y_logit), tf.round(self.d_y_)), tf.float32))
+
 
         # build loss function for training the generator
         self.g_d_loss = tf.nn.sigmoid_cross_entropy_with_logits(self.g_d_y_logit, tf.ones_like(self.g_d_y_logit))
@@ -49,20 +54,25 @@ class GAN:
         saver = tf.train.Saver()
         
         # Get all the training '1' digits for our "real" data
-        digits_of_interest = []
+        train_digits_of_interest = []
         for image, label in zip(mnist.train.images, mnist.train.labels):
             if label[digit]:
-                digits_of_interest.append(image)
+                train_digits_of_interest.append(image)
+        test_digits_of_interest = []
+        for image, label in zip(mnist.test.images, mnist.test.labels):
+            if label[digit]:
+                test_digits_of_interest.append(image)
     
         random.seed(12345)
-        random.shuffle(digits_of_interest)
+        random.shuffle(train_digits_of_interest)
+        random.shuffle(test_digits_of_interest)
 
         batch_size = 32
         for step in range(20000):
         
-            batch_index = step * batch_size % len(digits_of_interest)
-            batch_index = min(batch_index, len(digits_of_interest) - batch_size)
-            batch = digits_of_interest[batch_index:(batch_index + batch_size)]
+            batch_index = step * batch_size % len(train_digits_of_interest)
+            batch_index = min(batch_index, len(train_digits_of_interest) - batch_size)
+            batch = train_digits_of_interest[batch_index:(batch_index + batch_size)]
 
             #
             # Train the discriminator
@@ -81,6 +91,23 @@ class GAN:
                 image = np.reshape(result, (32*28, 28)) * 255.0
                 png.save_png('%s/digit-step-%06d.png' % (os.path.dirname(path), step), image)
                 saver.save(sess, path, step)
+
+                total_accuracy = 0
+                num_batches = 5
+                for i in xrange(num_batches):
+                    fake_samples = [(x, 0.0) for x in self.eval_generator(sess, 32)]
+                    real_samples = [(x, 1.0) for x in random.sample(test_digits_of_interest, 32)]
+                    samples = fake_samples + real_samples
+                    random.shuffle(samples)
+                    xs, ys = zip(*samples)
+                    xs = np.asarray(xs)
+                    ys = np.asarray(ys)
+                    ys = np.reshape(ys, (64, 1))
+                    accuracy = sess.run([self.d_accuracy], feed_dict={self.is_training: False, self.d_x: xs, self.d_y_: ys, self.d_keep_prob: 1.0})
+                    total_accuracy += accuracy[0]
+                total_accuracy /= float(num_batches)
+                print("Discriminator eval accuracy %f%%" % (total_accuracy * 100.0 / len(samples)))
+                
         saver.save(sess, path, step)
 
     def eval_generator(self, sess, n_samples=1):
