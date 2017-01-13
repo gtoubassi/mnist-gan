@@ -93,6 +93,7 @@ class GAN:
                 saver.save(sess, path, step)
 
                 total_accuracy = 0
+                total_samples = 0
                 num_batches = 5
                 for i in xrange(num_batches):
                     fake_samples = [(x, 0.0) for x in self.eval_generator(sess, 32)]
@@ -105,8 +106,8 @@ class GAN:
                     ys = np.reshape(ys, (64, 1))
                     accuracy = sess.run([self.d_accuracy], feed_dict={self.is_training: False, self.d_x: xs, self.d_y_: ys, self.d_keep_prob: 1.0})
                     total_accuracy += accuracy[0]
-                total_accuracy /= float(num_batches)
-                print("Discriminator eval accuracy %f%%" % (total_accuracy * 100.0 / len(samples)))
+                    total_samples += len(samples)
+                print("Discriminator eval accuracy %f%%" % (total_accuracy * 100.0 / total_samples))
                 
         saver.save(sess, path, step)
 
