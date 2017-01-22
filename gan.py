@@ -68,7 +68,7 @@ class GAN:
         random.shuffle(test_digits_of_interest)
 
         batch_size = 32
-        for step in range(100000):
+        for step in range(20000):
         
             batch_index = step * batch_size % len(train_digits_of_interest)
             batch_index = min(batch_index, len(train_digits_of_interest) - batch_size)

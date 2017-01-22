@@ -49,18 +49,13 @@ def main():
         samples = [[], []]
         
         mnist = MNIST()
-        for step in range(100000):
-            if step % 2:
-                if len(samples[0]) < 50:
-                    samples = gen_samples(gan, sessions)
-                xs = samples[0][:50]
-                ys = samples[1][:50]
-                samples[0] = samples[0][50:]
-                samples[1] = samples[1][50:]
-            else:
-                batch = mnist_data.train.next_batch(50)
-                xs = batch[0]
-                ys = batch[1]
+        for step in range(20000):
+            if len(samples[0]) < 50:
+                samples = gen_samples(gan, sessions)
+            xs = samples[0][:50]
+            ys = samples[1][:50]
+            samples[0] = samples[0][50:]
+            samples[1] = samples[1][50:]
             mnist.train_batch(xs, ys, step)
         test_accuracy = mnist.eval_batch(mnist_data.test.images, mnist_data.test.labels)
         print("Test accuracy %g" % test_accuracy)
