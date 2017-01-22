@@ -8,6 +8,12 @@ The interesting question (for me) is how well can you train an mnist classifier 
 
 For the classifier I used the CNN architecture described on the [TensorFlow tutorial](https://www.tensorflow.org/tutorials/mnist/pros/).  When trained straight away for 1M "impressions" (20k batches of 50 each, training over the 50k training corpus) I get an accuracy of 99.34% (noice).  When training over 1M impressions on synthetic images I get 9X.XX%  This implies that the synthetic images aren't quite "good enough" to beat the real deal (even though we are sampling a far more diverse population: 1M unique images vs 50k images recycled 20 times each).  Also note that I burned about 300 hrs of cpu time training these GANs (probably over did it), so computationally its a pretty expensive path for this particular application.
 
+### How to run
+
+To train a GAN for each digit 0-9: `./main.py --train-digits 0,1,2,3,4,5,6,7,8,9`.  Models and sample generated images will be saved to `./output`.
+
+To train mnist on GAN generated models which are sitting in ./output: `./main.py --train-mnist` (you must have generated models for all 10 digits).
+
 ### Notes
 
 One thing I learned was that batch normalization really helped training and in particular the diversity of the population generated.  Fortunately tf.contrib.layers makes this a 1 liner!
