@@ -18,8 +18,8 @@ Another note is that for some reason my 1 digit training went off the tracks at 
 
 [Deep MNIST for Experts](https://www.tensorflow.org/tutorials/mnist/pros/) TensorFlow Tutorial walks you through how to train a 99+% 
 
-[TensorFlow for Poets Codelab](https://codelabs.developers.google.com/codelabs/tensorflow-for-poets/#0) - Shows how to leverage a pre-trained Inception CNN to classify your own image corpus.  It is a hands on tutorial for [retrain.py](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/image_retraining)
+[An Introduction to Generative Adversarial Networks](http://blog.aylien.com/introduction-generative-adversarial-networks-code-tensorflow/) A nice blog post showing a simple GAN attempting to learn a gaussian distribution with code in TensorFlow
 
-[Course Videos for CS231n: Convolutional Neural Networks for Visual Recognition](https://www.youtube.com/playlist?list=PLLvH2FwAQhnpj1WEB-jHmPuUeQ8mX-XXG) - An overview of neural networks for image recognition and an excellent discussion of convolutional neural netowkrs in lecture 7.
+[Image Completion with Deep Learning in TensorFlow](https://bamos.github.io/2016/08/09/deep-completion/)  A great blog post showing using GANs to generate images.  Also shows the vector math you can do on the generator input vectors to combine features.  i.e. imagine you have 3 vectors which when fed to your generator output the following: (1) a smiling man, (2) a straight-faced/neutral man, (3) a straight-faced/neutral woman, you can take V1-V2+V3 and feed that to the GAN and you will get a smiling woman.  V1-V2 effectively captures the "smiling" expression, which you can add to other vectors.
 
-[Course Videos for CS224D: Deep Learning for Natural Language Processing](https://www.youtube.com/playlist?list=PLlJy-eBtNFt4CSVWYqscHDdP58M3zFHIG) - Richard Socher's lecture videos cover how to use neural networks in NLP tasks.  Word embeddings are covered as well as some nitty gritty backprop derivations.
+[NIPS 2016 Tutorial: Generative Adversarial Networks](https://arxiv.org/abs/1701.00160) A great overview from Ian Goodfellow, the inventor of GANs. ([slides](http://www.iangoodfellow.com/slides/2016-12-04-NIPS.pdf))
