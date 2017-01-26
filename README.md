@@ -1,6 +1,6 @@
 # mnist-gan
 
-mnist-gan is a simple GAN (Generative Adversarial Network) that learns how to generate images that look like mnist digits.  Separate networks are trained for each digit.  The idea is to train a "generator" network which when fed noise (in my case a 32 dimensional random vector) will generate an image that looks like an mnist style  "8" (for example).  In essence the network is finding a function of 32 variables that returns a matrix of pixels that look like a one.  Mind bending!  Below is an image that shows how the output for the 8 digit evolves over time (from left to right).  You can see how the digit starts to take shape from the noise:
+mnist-gan is a simple GAN (Generative Adversarial Network) that learns how to generate images that look like mnist digits.  Separate networks are trained for each digit.  The idea is to train a "generator" network which when fed noise (in my case a 32 dimensional random vector) will generate an image that looks like an mnist style  "8" (for example).  In essence the network is finding a function of 32 variables that returns a matrix of pixels that look like an eight.  Mind bending!  Below is an image that shows how the output for the 8 digit evolves over time (from left to right).  You can see how the digit starts to take shape from the noise:
 
 ![digit-8](https://cloud.githubusercontent.com/assets/640134/22179791/8308a134-e012-11e6-9757-0f8290a83c64.png)
 
